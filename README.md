@@ -28,8 +28,7 @@ Bot de segurança e gerenciamento para WhatsApp utilizando a biblioteca Baileys.
    ```
 
 3. Configure os arquivos na raiz do projeto:
-   - Copie `config.json.example` para `config.json` e informe o número do dono e prefixo do bot.
-   - Copie `apis.json.example` para `apis.json` e informe suas chaves de API (Groq, Gemini, etc.).
+   - `config.json` e `apis.json` ficam vazios por padrão e devem receber suas configurações conforme a necessidade do ambiente.
 
 ## Como Executar
 
