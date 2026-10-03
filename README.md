@@ -28,7 +28,7 @@ Bot de segurança e gerenciamento para WhatsApp utilizando a biblioteca Baileys.
    ```
 
 3. Configure os arquivos na raiz do projeto:
-   - `config.json` e `apis.json` ficam vazios por padrão e devem receber suas configurações conforme a necessidade do ambiente.
+   - `config.json` e `apis.json` mantêm a mesma estrutura do projeto, mas com os valores em branco para você preencher conforme o ambiente.
 
 ## Como Executar
 
