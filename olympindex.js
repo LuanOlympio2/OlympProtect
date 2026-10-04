@@ -1,4 +1,20 @@
 // creditos Olympio
+const origConsoleInfo = console.info;
+console.info = (...args) => {
+    if (typeof args[0] === 'string' && (args[0].includes('history sync chunk') || args[0].includes('decoded history'))) {
+        return;
+    }
+    origConsoleInfo.apply(console, args);
+};
+
+const origConsoleLog = console.log;
+console.log = (...args) => {
+    if (typeof args[0] === 'string' && (args[0].includes('history sync chunk') || args[0].includes('decoded history'))) {
+        return;
+    }
+    origConsoleLog.apply(console, args);
+};
+
 const patchBaileys = require('./dados/funções/patchBaileys');
 patchBaileys();
 const connectToWhatsApp = require('./connect');
