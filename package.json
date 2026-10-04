@@ -28,7 +28,6 @@
     "pino": "*",
     "pino-pretty": "*",
     "qrcode-terminal": "*",
-    "sharp": "*",
     "snapsave-media-downloader": "^2.4.1",
     "ultra-igdl": "^1.0.3",
     "wa-sticker-formatter": "*",
@@ -36,7 +35,6 @@
   },
   "overrides": {
     "axios": "*",
-    "sharp": "*",
     "fast-redact": "*",
     "phin": "*",
     "pino": "*",
@@ -44,5 +42,8 @@
   },
   "devDependencies": {
     "nodemon": "*"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.32.6"
   }
 }

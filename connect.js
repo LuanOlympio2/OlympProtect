@@ -1,4 +1,4 @@
-// creditos Olympio
+const qrcode = require('qrcode-terminal');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -13,7 +13,6 @@ const readline = require("readline");
 const fs = require('fs-extra');
 const NodeCache = require('node-cache');
 const path = require('path');
-const { boom } = require('@hapi/boom');
 const config = require('./config.json');
 const mensagensHandler = require('./dados/eventos/mensagens');
 const gruposHandler = require('./dados/eventos/grupos');
@@ -62,27 +61,36 @@ const question = (text) => {
         });
     });
 };
+let selectedMethod = null;
+let savedPhoneNumber = null;
+
 async function connectToWhatsApp() {
     console.log("🔄 Iniciando módulo de conexão...");
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version } = await fetchLatestBaileysVersion();
     console.log(`📱 Usando baileys v${version.join('.')}`);
-    let useQR = false;
-    let phoneNumber = null;
     const isRegistered = Boolean(state.creds.registered || state.creds.me?.id);
-    if (!isRegistered) {
+    let useQR = selectedMethod === '1';
+    let phoneNumber = savedPhoneNumber || (config.phoneNumber || config.pairingNumber || '').replace(/[^0-9]/g, '');
+
+    if (!isRegistered && !selectedMethod && !phoneNumber) {
         const choice = await question("Como deseja conectar?\n1. QR Code\n2. Código de Pareamento\n> ");
-        if (choice.trim() === '1') {
+        selectedMethod = choice.trim();
+        if (selectedMethod === '1') {
             useQR = true;
         } else {
-            phoneNumber = await question("Digite o número (ex: 551199999999): ");
-            phoneNumber = phoneNumber.replace(/[^0-9]/g, "");
+            const num = await question("Digite o número com DDD (ex: 551199999999): ");
+            savedPhoneNumber = num.replace(/[^0-9]/g, '');
+            phoneNumber = savedPhoneNumber;
         }
+    } else if (phoneNumber && !selectedMethod) {
+        selectedMethod = '2';
+        useQR = false;
     }
     const conn = makeWASocket({
         version,
         logger: inspectorLogger,
-        printQRInTerminal: useQR,
+        printQRInTerminal: false,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" }).child({ level: "fatal" })),
@@ -112,8 +120,40 @@ async function connectToWhatsApp() {
     conn.store = store;
     global.botConn = conn;
     attachTrafficInspector(conn, inspectorLogPath);
+    let pairingCodeRequested = false;
+    const requestPairing = async () => {
+        if (pairingCodeRequested || !phoneNumber || isRegistered) return;
+        pairingCodeRequested = true;
+        try {
+            console.log("🚀 Solicitando código de pareamento para:", phoneNumber);
+            const code = await conn.requestPairingCode(phoneNumber);
+            if (code) {
+                const formatted = code.match(/.{1,4}/g)?.join("-") || code;
+                console.log("\n========================================");
+                console.log("🔑 CÓDIGO DE PAREAMENTO: " + formatted);
+                console.log("========================================\n");
+                console.log("📲 Insira este código no WhatsApp para autenticar o bot.\n");
+            } else {
+                console.error("❌ Erro: O código retornado foi vazio.");
+                pairingCodeRequested = false;
+            }
+        } catch (error) {
+            console.error("❌ Falha ao solicitar código de pareamento:", error?.message || error);
+            pairingCodeRequested = false;
+        }
+    };
+
     conn.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
+
+        if (qr && !isRegistered) {
+            if (useQR) {
+                console.log("\n📲 Escaneie o QR Code abaixo para conectar:");
+                qrcode.generate(qr, { small: true });
+            } else if (phoneNumber && !pairingCodeRequested) {
+                setTimeout(requestPairing, 1000);
+            }
+        }
         if (connection === 'open') {
             console.log(`✅ [CONECTADO] ${config.botName || 'Bot'} está online!`);
             global.botOnline = true;
@@ -139,11 +179,11 @@ async function connectToWhatsApp() {
             }
         }
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(`❌ Conexão caiu. Motivo:`, lastDisconnect?.error?.message || lastDisconnect?.error);
             console.log(`❌ Reconectando: ${shouldReconnect}`);
             if (shouldReconnect) {
-                connectToWhatsApp();
+                setTimeout(() => connectToWhatsApp(), 3000);
             } else {
                 console.log("⛔ Desconectado permanentemente. Apague a pasta 'auth_info_baileys' e reinicie.");
                 process.exit(1);
@@ -151,22 +191,15 @@ async function connectToWhatsApp() {
         }
     });
     conn.ev.on('creds.update', saveCreds);
+
     if (!isRegistered && !useQR && phoneNumber) {
-        console.log("⚠️ Sessão não registrada. Usando Código de Pareamento.");
-        setTimeout(async () => {
-            try {
-                console.log("🚀 Solicitando código de pareamento...");
-                const code = await conn.requestPairingCode(phoneNumber);
-                if (code) {
-                    console.log(`🔑 Código de Pareamento: ${code.match(/.{1,4}/g).join("-")}`);
-                } else {
-                    console.error("❌ Erro: O código retornado foi indefinido ou vazio.");
-                }
-            } catch (error) {
-                console.error("❌ Falha ao solicitar código de pareamento:", error?.message || error);
+        setTimeout(() => {
+            if (!pairingCodeRequested) {
+                requestPairing();
             }
-        }, 3000);
+        }, 5000);
     }
+
     conn.ev.on('groups.update', async (updates) => {
         for (const update of updates) {
             if (update && update.id) {
