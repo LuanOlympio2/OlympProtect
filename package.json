@@ -5,7 +5,7 @@
   "main": "olympindex.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node --max-old-space-size=1024 olympindex.js",
+    "start": "npm install --no-audit --no-fund && node --max-old-space-size=1024 olympindex.js",
     "dev": "nodemon --max-old-space-size=1024 olympindex.js",
     "prepare": "node -e \"const { execSync } = require('child_process'); const env = process.env || {}; const isAndroid = process.platform === 'android' || /termux/i.test(String(env.PREFIX || '') + ' ' + String(env.HOME || '')); const isPterodactyl = !!(env.PTERODACTYL || env.SERVER_UUID || env.WING_VERSION || (env.PWD && /pterodactyl/i.test(env.PWD))); if (isAndroid || isPterodactyl) { console.log('[prepare] Ignorando setup do Baileys em Termux/Pterodactyl para evitar falhas incompatíveis.'); process.exit(0); } try { execSync('git config --global --add safe.directory \"*\"', { stdio: 'inherit', shell: true }); } catch (err) { console.warn('[prepare] Git indisponível ou bloqueado; ignorando safe.directory.'); }\""
   },

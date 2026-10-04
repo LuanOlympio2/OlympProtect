@@ -1,4 +1,7 @@
-const qrcode = require('qrcode-terminal');
+let qrcode = null;
+try {
+    qrcode = require('qrcode-terminal');
+} catch (_) {}
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -148,8 +151,13 @@ async function connectToWhatsApp() {
 
         if (qr && !isRegistered) {
             if (useQR) {
-                console.log("\n📲 Escaneie o QR Code abaixo para conectar:");
-                qrcode.generate(qr, { small: true });
+                if (qrcode) {
+                    console.log("\n📲 Escaneie o QR Code abaixo para conectar:");
+                    qrcode.generate(qr, { small: true });
+                } else {
+                    console.log("\n📲 QR Code disponível no socket.");
+                    console.log("ℹ️ Para renderizar o QR gráfico no terminal, instale: npm install qrcode-terminal");
+                }
             } else if (phoneNumber && !pairingCodeRequested) {
                 setTimeout(requestPairing, 1000);
             }
